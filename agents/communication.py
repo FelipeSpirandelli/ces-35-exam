@@ -30,6 +30,8 @@ class Communication:
         self.env.broadcast_message(self.agent_id, message)
         self.logger.info(f"Broadcasted leader position: {leader_pos} with timestamp {timestamp}")
 
+    def broadcast_generic_message(self, message):
+        self.env.broadcast_message(self.agent_id, message)
 
 def communication_factory(agent_id: int, config: Config = None, env: Environment = None) -> Movement:
     return Communication(agent_id, config or Config(), env or Environment())

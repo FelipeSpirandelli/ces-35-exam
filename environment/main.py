@@ -24,7 +24,7 @@ class Environment:
         return cls._instance
 
     def __init__(
-        self, config: Config = None, number_agents: int = None, area: Polygon = None, scale: float = 5.0
+        self, config: Config = None, number_agents: int = None, area: Polygon = None, scale: float = 5.0, attackerPresent: bool = False, attackerPos : Point = None
     ):
         if self._initialized:
             return
@@ -34,7 +34,7 @@ class Environment:
 
         self.config = config
         self.logger = self.config.logger
-
+        self.attackerPresent = attackerPresent
         self.number_agents = number_agents
         self.area = area
         self.scale = scale
@@ -42,6 +42,7 @@ class Environment:
         self.agent_messages: List[List[Dict]] = [[] for _ in range(number_agents)]
         self.agent_iteration_pos: Dict[List[Point]] = {id: [] for id in range(number_agents)}
         self._initialized = True
+        self.attackerPos = attackerPos
 
     def get_position(self, agent_id) -> Point:
         """Used when an agent needs to know its position"""
@@ -66,11 +67,14 @@ class Environment:
         return messages
 
     def _check_connection(self, src_id: int, dest_id: int):
-        src_pos = self.get_position(src_id)
+        if (self.attackerPresent):
+            src_pos = self.attackerPos
+        else:
+            src_pos = self.get_position(src_id)
         dest_pos = self.get_position(dest_id)
 
         distance = src_pos.distance(dest_pos)
-        probability = math.exp(-distance / self.scale)
+        probability = math.exp(-(distance / self.scale)**2)
 
         self.logger.debug(f"Checking connection between Agent {src_id} and Agent {dest_id}")
         self.logger.debug(f"Source Position: {src_pos}, Destination Position: {dest_pos}")
@@ -80,6 +84,7 @@ class Environment:
         self.logger.debug(f"Random Value: {rand_val:.4f}")
 
         is_connected = rand_val < probability
+        # max distance threshold
         self.logger.debug(f"Connected: {is_connected}")
 
         return is_connected
@@ -114,7 +119,8 @@ class Environment:
         ax.set_ylim(min(y) - 1, max(y) + 1)
 
         colors = ["r", "g", "b", "c", "m", "y", "k", "w"]
-
+        attacker_color = "black"
+        attackerPos = self.attackerPos
         # Initialize agent scatter plots
         agent_plots = []
         for positions, color in zip(self.agent_iteration_pos.values(), colors):
@@ -123,7 +129,9 @@ class Environment:
             # Plot the initial position of the agent
             (agent_plot,) = ax.plot([pos.x], [pos.y], "o", color=color)
             agent_plots.append(agent_plot)
-
+        if (self.attackerPresent):
+            (agent_plot,) = ax.plot([attackerPos.x], [attackerPos.y], "o", color=attacker_color)
+            agent_plots.append(agent_plot)
         # Update function for animation
         def update(frame):
             for agent_plot, positions in zip(agent_plots, self.agent_iteration_pos.values()):
